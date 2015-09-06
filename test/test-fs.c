@@ -2531,3 +2531,44 @@ TEST_IMPL(fs_read_write_null_arguments) {
 
   return 0;
 }
+
+
+TEST_IMPL(fs_realpath) {
+  uv_fs_t req;
+
+  // Testing non-existent path asynchronously
+  loop = uv_default_loop();
+  ASSERT(0 == uv_fs_realpath(loop, &req, "no_such_file", dummy_cb));
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT(dummy_cb_count == 1);
+  ASSERT(req.ptr == NULL);
+  ASSERT(req.result == UV_ENOENT);
+  uv_fs_req_cleanup(&req);
+
+  // Testing non-existent path synchronously
+  ASSERT(UV_ENOENT == uv_fs_realpath(NULL, &req, "no_such_file", NULL));
+  ASSERT(req.ptr == NULL);
+  ASSERT(req.result == UV_ENOENT);
+
+  // Get current working directory
+  static char cwd[PATHMAX];
+  size_t size;
+  size = sizeof(cwd);
+  uv_cwd(cwd, &size);
+
+  unlink("test_file");
+  uv_fs_open(loop, &open_req1, "test_file", O_WRONLY | O_CREAT,
+      S_IRUSR | S_IWUSR, create_cb);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT(0 == uv_fs_realpath(loop, &req, "../no_such_file", dummy_cb));
+  ASSERT(0 == uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT(dummy_cb_count == 2);
+  ASSERT(req.ptr == NULL);
+  ASSERT(req.result == UV_ENOENT);
+  uv_fs_req_cleanup(&req);
+
+  RETURN_SKIP(cwd);
+  return 0;
+}
+

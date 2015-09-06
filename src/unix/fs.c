@@ -824,6 +824,12 @@ static ssize_t uv__fs_buf_iter(uv_fs_t* req, uv__fs_buf_iter_processor process) 
 }
 
 
+static ssize_t uv__fs_realpath(uv_fs_t* req) {
+  req->ptr = realpath(req->path, NULL);
+  return req->ptr == NULL ? -1 : 0;
+}
+
+
 static void uv__fs_work(struct uv__work* w) {
   int retry_on_eintr;
   uv_fs_t* req;
@@ -860,6 +866,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(READ, uv__fs_buf_iter(req, uv__fs_read));
     X(SCANDIR, uv__fs_scandir(req));
     X(READLINK, uv__fs_readlink(req));
+    X(REALPATH, uv__fs_realpath(req));
     X(RENAME, rename(req->path, req->new_path));
     X(RMDIR, rmdir(req->path));
     X(SENDFILE, uv__fs_sendfile(req));
@@ -1245,4 +1252,14 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->ptr != &req->statbuf)
     uv__free(req->ptr);
   req->ptr = NULL;
+}
+
+
+int uv_fs_realpath(uv_loop_t* loop,
+                uv_fs_t* req,
+                const char* path,
+                uv_fs_cb cb) {
+  INIT(UTIME);
+  PATH;
+  POST;
 }
